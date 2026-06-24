@@ -68,21 +68,20 @@ export class TradingEngine {
   async startMonitoring() {
     if (this.isRunning) return;
     this.isRunning = true;
-    console.log('[TradingEngine] Starting - forced live mode');
+    console.log('[TradingEngine] Starting in DEMO mode - set liveTrading=true for real swaps');
     
-    // Force live mode immediately (with fallback to demo)
-    this.useDemoMode = false;
+    // SAFETY: Start in demo mode by default. Real on-chain swaps only when explicitly enabled.
+    this.useDemoMode = true;
+    this.liveTradingEnabled = false;
+    
+    // Still try to connect wallet (for balance display), but don't trade live
     try {
       if (process.env.BURNER_WALLET_PRIVATE_KEY) {
         this.wallet = new ethers.Wallet(process.env.BURNER_WALLET_PRIVATE_KEY);
-        console.log('[TradingEngine] Wallet configured:', this.wallet.address);
-      } else {
-        console.log('[TradingEngine] No private key - falling back to demo mode');
-        this.useDemoMode = true;
+        console.log('[TradingEngine] Wallet configured (demo mode):', this.wallet.address);
       }
     } catch (err) {
-      console.log('[TradingEngine] Wallet setup failed:', err.message, '- falling back to demo mode');
-      this.useDemoMode = true;
+      console.log('[TradingEngine] Wallet setup failed:', err.message);
     }
     
     // Quick research (no network)
