@@ -47,7 +47,7 @@ function Dashboard() {
     fetchTrades();
     PAIRS.forEach(p => fetchResearch(p));
     setLoading(false);
-    const interval = setInterval(() => { fetchSummary(); fetchTrades(); }, 30000);
+    const interval = setInterval(() => { fetchSummary(); fetchTrades(); }, 5000);
     return () => clearInterval(interval);
   }, [fetchSummary, fetchTrades, fetchResearch]);
 
