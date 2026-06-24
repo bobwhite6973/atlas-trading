@@ -67,10 +67,19 @@ export class TradingEngine {
     this.isRunning = true;
     console.log('[TradingEngine] Starting - forced live mode');
     
-    // Force live mode immediately
+    // Force live mode immediately (with fallback to demo)
     this.useDemoMode = false;
-    if (process.env.BURNER_WALLET_PRIVATE_KEY) {
-      this.wallet = new ethers.Wallet(process.env.BURNER_WALLET_PRIVATE_KEY);
+    try {
+      if (process.env.BURNER_WALLET_PRIVATE_KEY) {
+        this.wallet = new ethers.Wallet(process.env.BURNER_WALLET_PRIVATE_KEY);
+        console.log('[TradingEngine] Wallet configured:', this.wallet.address);
+      } else {
+        console.log('[TradingEngine] No private key - falling back to demo mode');
+        this.useDemoMode = true;
+      }
+    } catch (err) {
+      console.log('[TradingEngine] Wallet setup failed:', err.message, '- falling back to demo mode');
+      this.useDemoMode = true;
     }
     
     // Quick research (no network)
@@ -271,7 +280,24 @@ export class TradingEngine {
   async scanArbitrage() {}
 
   simulateTrade(params) {
-    // Demo mode - log the trade
+    const { pair, direction, price, confidence, balance, strategy } = params;
+    const positionSize = Math.min(balance * this.config.maxPositionSize, 500);
+    if (positionSize < 0.01) return;
+    
+    const position = {
+      id: `${pair}-${Date.now()}`,
+      pair, direction, entryPrice: price, positionSize,
+      leverage: this.config.leverageMultiplier,
+      effectiveSize: positionSize * this.config.leverageMultiplier,
+      entryTime: Date.now(), strategy, confidence,
+      takeProfit: direction === 'long' ? price * 1.015 : price * 0.985,
+      stopLoss: direction === 'long' ? price * 0.995 : price * 1.005,
+      status: 'open'
+    };
+    
+    this.activePositions.set(pair, position);
+    saveTrade(position);
+    console.log(`[Demo Trade] ${direction.toUpperCase()} ${pair} @ ${price.toFixed(2)} | Size: ${positionSize.toFixed(2)} | Conf: ${(confidence*100).toFixed(0)}%`);
   }
 
   stop() { this.isRunning = false; console.log('[TradingEngine] Stopped.'); }
