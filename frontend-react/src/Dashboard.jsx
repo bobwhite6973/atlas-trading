@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 // Backend API URL - change this to your Railway URL
 const API_BASE = import.meta.env.VITE_API_URL || 'https://atlas-trading-production-9fd5.up.railway.app/api';
-const PAIRS = ['WETH/USDC', 'WBTC/USDC', 'WETH/USDT', 'ARB/USDC', 'MATIC/USDC', 'OP/USDC'];
+const PAIRS = ['ETH/USDC', 'BTC/USDC', 'SOL/USDC', 'BNB/USDC', 'XRP/USDC', 'KAS/USDC'];
 
 function Dashboard() {
   const [summary, setSummary] = useState(null);
@@ -10,7 +10,16 @@ function Dashboard() {
   const [research, setResearch] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedPair, setSelectedPair] = useState('WETH/USDC');
+  const [selectedPair, setSelectedPair] = useState('ETH/USDC');
+
+  const toggleEngine = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/control/status`);
+      const data = await res.json();
+      const endpoint = data.running ? 'control/stop' : 'control/start';
+      await fetch(`${API_BASE}/${endpoint}`, { method: 'POST' });
+    } catch (e) {}
+  };
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -73,6 +82,15 @@ function Dashboard() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ color: summary?.status === 'running' ? '#4ade80' : '#f87171', fontSize: 14 }}>{summary?.status === 'running' ? 'LIVE' : 'Starting...'}</span>
+          <span style={{ fontSize: 12, color: '#94a3b8' }}>|</span>
+          <span style={{ fontSize: 12, color: '#e2e8f0' }}>💰 ${summary?.wallet?.total?.toFixed(2) || '0.00'}</span>
+          <button onClick={toggleEngine} style={{
+            padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
+            background: summary?.status === 'running' ? '#dc2626' : '#059669',
+            color: 'white', fontWeight: 600, fontSize: 12
+          }}>
+            {summary?.status === 'running' ? '⏹ STOP' : '▶ START'}
+          </button>
           <span style={{ fontSize: 12, color: '#64748b' }}>{new Date().toLocaleString()}</span>
         </div>
       </header>

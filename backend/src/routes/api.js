@@ -5,6 +5,9 @@ import { MarketDataService } from '../engine/marketData.js';
 const router = express.Router();
 const marketData = new MarketDataService();
 
+let walletBal = { eth: 0, usdc: 0, total: 0 };
+export function updateWallet(b) { walletBal = b; }
+
 // Dashboard summary
 router.get('/summary', async (req, res) => {
   try {
@@ -17,7 +20,7 @@ router.get('/summary', async (req, res) => {
     
     // Get current prices for dashboard
     const prices = {};
-    for (const pair of ['WETH/USDC', 'WBTC/USDC', 'WETH/USDT', 'ARB/USDC', 'MATIC/USDC', 'OP/USDC']) {
+    for (const pair of ['ETH/USDC', 'BTC/USDC', 'SOL/USDC', 'BNB/USDC', 'XRP/USDC', 'KAS/USDC']) {
       prices[pair] = await marketData.getCurrentPrice(pair);
     }
     
@@ -29,6 +32,7 @@ router.get('/summary', async (req, res) => {
       totalPnl: Math.round(totalPnl * 100) / 100,
       winRate: parseFloat(winRate),
       currentPrices: prices,
+      wallet: walletBal,
       lastUpdate: Date.now()
     });
   } catch (err) {

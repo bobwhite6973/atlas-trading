@@ -1,8 +1,8 @@
 import { ethers } from 'ethers';
 
 const TRADING_PAIRS = [
-  'WETH/USDC', 'WBTC/USDC', 'WETH/USDT',
-  'ARB/USDC', 'MATIC/USDC', 'OP/USDC'
+  'ETH/USDC', 'BTC/USDC', 'SOL/USDC',
+  'BNB/USDC', 'XRP/USDC', 'KAS/USDC'
 ];
 
 export class TradingEngine {

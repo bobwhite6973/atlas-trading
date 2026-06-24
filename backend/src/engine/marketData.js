@@ -40,28 +40,24 @@ export class MarketDataService {
     try {
       // Pool configs: [pair, subgraphUrl, query]
       const poolConfigs = {
-        'WETH/USDC': {
+        'ETH/USDC': {
           url: this.subgraphs.uniswapV3,
           query: `{pool(id: "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8") { token0Price token1Price }}`,
           parse: (d) => 1 / parseFloat(d.data.pool?.token0Price || 1)
         },
-        'WBTC/USDC': {
+        'BTC/USDC': {
           url: this.subgraphs.uniswapV3,
           query: `{pool(id: "0x99ac8ca7087fa4a2a1fb6357269965a2014abc35") { token0Price token1Price }}`,
           parse: (d) => 1 / parseFloat(d.data.pool?.token0Price || 1)
-        },
-        'WETH/USDT': {
-          url: this.subgraphs.uniswapV3,
-          query: `{pool(id: "0x11b815efb8f581194ae79006d24e0d814b7697f6") { token0Price token1Price }}`,
-          parse: (d) => parseFloat(d.data.pool?.token0Price || 1662)
         }
       };
       
-      // Alt-chain pairs use CoinGecko as source (no CEX)
+      // Alt-chain pairs use CoinGecko (read-only, no CEX API)
       const altCoinMap = {
-        'ARB/USDC': ['arbitrum', 0.64],
-        'MATIC/USDC': ['matic-network', 0.38],
-        'OP/USDC': ['optimism', 1.33]
+        'SOL/USDC': ['solana', 145],
+        'BNB/USDC': ['binancecoin', 580],
+        'XRP/USDC': ['ripple', 0.50],
+        'KAS/USDC': ['kaspa', 0.14]
       };
       
       if (poolConfigs[pair]) {
@@ -91,7 +87,7 @@ export class MarketDataService {
   }
 
   async coingeckoPrice(pair) {
-    const map = { 'WETH/USDC': 'ethereum', 'WBTC/USDC': 'bitcoin', 'WETH/USDT': 'ethereum', 'ARB/USDC': 'arbitrum', 'MATIC/USDC': 'matic-network', 'OP/USDC': 'optimism' };
+    const map = { 'ETH/USDC': 'ethereum', 'BTC/USDC': 'bitcoin', 'SOL/USDC': 'solana', 'BNB/USDC': 'binancecoin', 'XRP/USDC': 'ripple', 'KAS/USDC': 'kaspa' };
     const id = map[pair];
     if (!id) return null;
     const controller = new AbortController();
@@ -104,14 +100,13 @@ export class MarketDataService {
   }
 
   getFallbackPrice(pair) {
-    // Real prices from CoinGecko (updated regularly)
     const prices = {
-      'WETH/USDC': 1662 + (Math.random() - 0.5) * 10,
-      'WBTC/USDC': 62569 + (Math.random() - 0.5) * 200,
-      'WETH/USDT': 1662 + (Math.random() - 0.5) * 10,
-      'ARB/USDC': 0.64 + (Math.random() - 0.5) * 0.01,
-      'MATIC/USDC': 0.38 + (Math.random() - 0.5) * 0.01,
-      'OP/USDC': 1.33 + (Math.random() - 0.5) * 0.02
+      'ETH/USDC': 1662 + (Math.random() - 0.5) * 10,
+      'BTC/USDC': 62569 + (Math.random() - 0.5) * 200,
+      'SOL/USDC': 145 + (Math.random() - 0.5) * 2,
+      'BNB/USDC': 580 + (Math.random() - 0.5) * 5,
+      'XRP/USDC': 0.50 + (Math.random() - 0.5) * 0.01,
+      'KAS/USDC': 0.14 + (Math.random() - 0.5) * 0.005
     };
     return prices[pair] || null;
   }
@@ -170,12 +165,12 @@ export class MarketDataService {
   }
 
   getBasePrice(pair) {
-    const prices = { 'WETH/USDC': 1662, 'WBTC/USDC': 62569, 'WETH/USDT': 1662, 'ARB/USDC': 0.64, 'MATIC/USDC': 0.38, 'OP/USDC': 1.33 };
+    const prices = { 'ETH/USDC': 1662, 'BTC/USDC': 62569, 'SOL/USDC': 145, 'BNB/USDC': 580, 'XRP/USDC': 0.50, 'KAS/USDC': 0.14 };
     return prices[pair] || 100;
   }
 
   getPairVolatility(pair) {
-    const vols = { 'WETH/USDC': 3.5, 'WBTC/USDC': 3.0, 'WETH/USDT': 3.5, 'ARB/USDC': 5.5, 'MATIC/USDC': 4.5, 'OP/USDC': 6.0 };
+    const vols = { 'ETH/USDC': 3.5, 'BTC/USDC': 3.0, 'SOL/USDC': 5.5, 'BNB/USDC': 4.5, 'XRP/USDC': 5.0, 'KAS/USDC': 6.5 };
     return vols[pair] || 4.0;
   }
 }
