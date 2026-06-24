@@ -36,8 +36,7 @@ export class TradingEngine {
 
   async tryRealConnection() {
     try {
-      const rpcUrl = process.env.ETH_RPC;
-      if (!rpcUrl) { console.log('[TradingEngine] No RPC set - staying demo'); return; }
+      const rpcUrl = process.env.ETH_RPC || 'https://ethereum-rpc.publicnode.com';
       
       // Test RPC
       const res = await fetch(rpcUrl, {
@@ -47,13 +46,15 @@ export class TradingEngine {
       const data = await res.json();
       if (!data.result) { console.log('[TradingEngine] RPC not responding - staying demo'); return; }
       
-      // RPC works - go LIVE
+      // RPC works - go LIVE immediately
       this.provider = new ethers.JsonRpcProvider(rpcUrl);
+      this.useDemoMode = false;
+      console.log(`[TradingEngine] RPC OK - SWITCHED TO LIVE MODE`);
+      
+      // Connect wallet if key exists
       if (process.env.BURNER_WALLET_PRIVATE_KEY) {
         this.wallet = new ethers.Wallet(process.env.BURNER_WALLET_PRIVATE_KEY, this.provider);
-        this.walletAddress = this.wallet.address;
-        this.useDemoMode = false;
-        console.log(`[TradingEngine] SWITCHED TO LIVE MODE - Wallet: ${this.walletAddress}`);
+        console.log(`[TradingEngine] Wallet ready: ${this.wallet.address}`);
       }
     } catch (err) {
       console.log('[TradingEngine] RPC failed:', err.message);
