@@ -26,28 +26,32 @@ export class TradingEngine {
       slippageTolerance: 0.01
     };
     
-    this.initializeConnection();
+    // Start in demo mode immediately - try real connection in background
+    console.log(`[TradingEngine] Starting in DEMO mode (wallet: ${this.walletAddress})`);
+    if (process.env.BURNER_WALLET_PRIVATE_KEY) {
+      console.log('[TradingEngine] Wallet private key configured, will attempt RPC connection...');
+    }
+    this.tryRealConnection();
   }
 
-  async initializeConnection() {
+  async tryRealConnection() {
     try {
-      const rpcUrl = process.env.ETH_RPC || 'https://ethereum-rpc.publicnode.com';
-      this.provider = new ethers.JsonRpcProvider(rpcUrl);
-      await this.provider.getNetwork(); // Test connection
-      
+      const rpcUrl = process.env.ETH_RPC;
+      if (!rpcUrl) return;
+      this.provider = new ethers.JsonRpcProvider(rpcUrl, undefined, { staticNetwork: true });
+      const network = await Promise.race([
+        this.provider.getNetwork(),
+        new Promise(r => setTimeout(() => r(null), 8000)) // 8s timeout
+      ]);
+      if (!network) { console.log('[TradingEngine] RPC timeout - staying in DEMO mode'); return; }
       if (process.env.BURNER_WALLET_PRIVATE_KEY) {
-        this.wallet = new ethers.Wallet(
-          process.env.BURNER_WALLET_PRIVATE_KEY,
-          this.provider
-        );
+        this.wallet = new ethers.Wallet(process.env.BURNER_WALLET_PRIVATE_KEY, this.provider);
         this.walletAddress = this.wallet.address;
-        console.log(`[TradingEngine] Wallet connected: ${this.walletAddress}`);
         this.useDemoMode = false;
+        console.log(`[TradingEngine] Wallet connected: ${this.walletAddress} - SWITCHED TO LIVE MODE`);
       }
-    } catch (err) {
-      console.log(`[TradingEngine] RPC unavailable (${err.message}) - running in DEMO mode`);
-      console.log(`[TradingEngine] Wallet configured: ${this.walletAddress}`);
-      this.useDemoMode = true;
+    } catch {
+      // Stay in demo mode, that's fine
     }
   }
 
