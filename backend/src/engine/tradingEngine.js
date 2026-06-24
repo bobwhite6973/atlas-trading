@@ -119,6 +119,9 @@ export class TradingEngine {
       try {
         const balance = await this.getWalletBalance();
         
+        // Force trade on first empty pair every cycle
+        let traded = false;
+        
         for (const [pair, research] of this.monitoredPairs) {
           if (Date.now() - research.lastUpdated > 86400000) {
             this.researchPair(pair);
@@ -131,6 +134,19 @@ export class TradingEngine {
           const signal = await this.evaluateEntry(pair, currentPrice, research);
           if (signal.shouldEnter && signal.confidence >= this.config.minConfidence) {
             await this.executeTrade({ pair, direction: signal.direction, price: currentPrice, confidence: signal.confidence, balance, strategy: research.strategy });
+            traded = true;
+          }
+        }
+        
+        // If no pair triggered, force trade on first available pair
+        if (!traded && balance > 5) {
+          for (const [pair] of this.monitoredPairs) {
+            if (this.activePositions.has(pair)) continue;
+            const currentPrice = await this.marketData.getCurrentPrice(pair);
+            if (currentPrice) {
+              await this.executeTrade({ pair, direction: 'long', price: currentPrice, confidence: 0.5, balance, strategy: 'forced' });
+              break;
+            }
           }
         }
         
