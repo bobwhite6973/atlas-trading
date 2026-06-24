@@ -17,9 +17,9 @@ export class TradingEngine {
     this.useDemoMode = true; // Safe default
     this.config = {
       maxDrawdown: 0.15,
-      maxPositionSize: 0.3,
+      maxPositionSize: 0.15,
       leverageMultiplier: 3,
-      minConfidence: 0.65,
+      minConfidence: 0.15,
       takeProfitMultiplier: 2.5,
       stopLossMultiplier: 0.5,
       pairResearchDays: 400,
@@ -137,7 +137,7 @@ export class TradingEngine {
       } catch (err) {
         console.error('[MonitorLoop] Error:', err.message);
       }
-      await new Promise(r => setTimeout(r, 120000));
+      await new Promise(r => setTimeout(r, 30000));
     }
   }
 
@@ -147,20 +147,25 @@ export class TradingEngine {
     
     const { supportLevel, resistanceLevel, avgPrice, volatility } = research;
     
-    switch (research.strategy) {
-      case 'trend_following':
-        if (currentPrice > avgPrice * 1.03) { signal.shouldEnter = true; signal.direction = 'long'; signal.confidence = 0.7 + (volatility / 20); signal.reason.push('Trend: above avg'); }
-        else if (currentPrice < avgPrice * 0.97) { signal.shouldEnter = true; signal.direction = 'short'; signal.confidence = 0.7 + (volatility / 20); signal.reason.push('Trend: below avg'); }
-        break;
-      case 'breakout':
-        if (resistanceLevel && currentPrice > resistanceLevel * 1.005) { signal.shouldEnter = true; signal.direction = 'long'; signal.confidence = 0.75; signal.reason.push('Breakout: above resistance'); }
-        else if (supportLevel && currentPrice < supportLevel * 0.995) { signal.shouldEnter = true; signal.direction = 'short'; signal.confidence = 0.75; signal.reason.push('Breakout: below support'); }
-        break;
-      case 'mean_reversion':
-        if (supportLevel && currentPrice < supportLevel * 1.005) { signal.shouldEnter = true; signal.direction = 'long'; signal.confidence = 0.65; signal.reason.push('Reversion: at support'); }
-        else if (resistanceLevel && currentPrice > resistanceLevel * 0.995) { signal.shouldEnter = true; signal.direction = 'short'; signal.confidence = 0.65; signal.reason.push('Reversion: at resistance'); }
-        break;
+    // Aggressive: trade on any small move
+    if (currentPrice > avgPrice * 1.002) {
+      signal.shouldEnter = true;
+      signal.direction = 'long';
+      signal.confidence = Math.min(0.3 + (volatility / 30), 0.9);
+      signal.reason.push('Aggressive long');
+    } else if (currentPrice < avgPrice * 0.998) {
+      signal.shouldEnter = true;
+      signal.direction = 'short';
+      signal.confidence = Math.min(0.3 + (volatility / 30), 0.9);
+      signal.reason.push('Aggressive short');
+    } else {
+      // Always enter if no strong signal - scalp small moves
+      signal.shouldEnter = true;
+      signal.direction = currentPrice > avgPrice ? 'long' : 'short';
+      signal.confidence = 0.15;
+      signal.reason.push('Scalp trade');
     }
+    
     return signal;
   }
 
@@ -185,8 +190,8 @@ export class TradingEngine {
         leverage: this.config.leverageMultiplier,
         effectiveSize: positionSize * this.config.leverageMultiplier,
         entryTime: Date.now(), strategy, confidence,
-        takeProfit: direction === 'long' ? price * 1.08 : price * 0.92,
-        stopLoss: direction === 'long' ? price * 0.98 : price * 1.02,
+        takeProfit: direction === 'long' ? price * 1.015 : price * 0.985,
+        stopLoss: direction === 'long' ? price * 0.995 : price * 1.005,
         status: 'open'
       };
       
