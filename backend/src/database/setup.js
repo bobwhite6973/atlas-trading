@@ -1,17 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import initSqlJs from 'sql.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 let db = null;
 
 export async function setupDatabase() {
   const SQL = await initSqlJs();
   
-  const dbPath = path.join(__dirname, '../../../data/atlas.db');
+  const dbPath = path.join(process.cwd(), 'data/atlas.db');
   const dataDir = path.dirname(dbPath);
   
   if (!fs.existsSync(dataDir)) {
@@ -112,7 +108,7 @@ export function saveTrade(trade) {
   
   stmt.free();
   
-  const dbPath = path.join(__dirname, '../../../data/atlas.db');
+  const dbPath = path.join(process.cwd(), 'data/atlas.db');
   const data = db.export();
   fs.writeFileSync(dbPath, Buffer.from(data));
 }
