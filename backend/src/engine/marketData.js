@@ -34,8 +34,31 @@ export class MarketDataService {
   }
 
   async getDexPrice(pair) {
-    // In production: queries on-chain DEX pools directly
-    // For demo: realistic simulated prices
+    // Free real-time price feed from CoinGecko (read-only, no auth needed)
+    try {
+      const coinMap = {
+        'WETH/USDC': 'ethereum',
+        'WBTC/USDC': 'bitcoin', 
+        'WETH/USDT': 'ethereum',
+        'ARB/USDC': 'arbitrum',
+        'MATIC/USDC': 'matic-network',
+        'OP/USDC': 'optimism'
+      };
+      const coinId = coinMap[pair];
+      if (!coinId) return null;
+      
+      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`;
+      const response = await fetch(url);
+      if (!response.ok) return this.getFallbackPrice(pair);
+      const data = await response.json();
+      const price = data[coinId]?.usd;
+      if (price) return price;
+    } catch {}
+    return this.getFallbackPrice(pair);
+  }
+
+  getFallbackPrice(pair) {
+    // Fallback if CoinGecko is rate-limited
     const prices = {
       'WETH/USDC': 3450 + (Math.random() - 0.5) * 20,
       'WBTC/USDC': 67500 + (Math.random() - 0.5) * 200,
@@ -50,11 +73,13 @@ export class MarketDataService {
   async deepResearch(pair, days = 400) {
     console.log(`[DeepResearch] ${pair} for ${days} days...`);
     
-    const basePrice = this.getBasePrice(pair);
+    // Use real current price as base
+    const realPrice = await this.getCurrentPrice(pair) || this.getBasePrice(pair);
+    const basePrice = realPrice;
     const volatility = this.getPairVolatility(pair);
     
     let prices = [];
-    let currentPrice = basePrice;
+    let currentPrice = realPrice;
     let highPrice = currentPrice;
     let lowPrice = currentPrice;
     let totalVolume = 0;
