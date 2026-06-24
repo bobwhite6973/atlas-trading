@@ -65,6 +65,11 @@ export class TradingEngine {
     this.isRunning = true;
     console.log('[TradingEngine] Starting market monitoring...');
     
+    // Try to switch to LIVE mode
+    if (this.useDemoMode && process.env.BURNER_WALLET_PRIVATE_KEY) {
+      await this.tryRealConnection();
+    }
+    
     for (const pair of TRADING_PAIRS) {
       this.researchPair(pair);
     }
