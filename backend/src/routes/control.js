@@ -19,17 +19,37 @@ router.get('/status', (req, res) => {
   });
 });
 
-router.get('/diagnostics', (req, res) => {
+router.get('/diagnostics', async (req, res) => {
   const hasKey = !!process.env.BURNER_WALLET_PRIVATE_KEY;
+  let ethersWalletTest = null;
+  let walletError = null;
+  try {
+    const { ethers } = await import('ethers');
+    if (hasKey) {
+      try {
+        const w = new ethers.Wallet(process.env.BURNER_WALLET_PRIVATE_KEY);
+        ethersWalletTest = { address: w.address, success: true };
+      } catch (e) {
+        walletError = e.message;
+        ethersWalletTest = { success: false, error: e.message };
+      }
+    }
+  } catch (e) {
+    walletError = 'ethers import failed: ' + e.message;
+  }
+
   res.json({
     env: {
       hasBurnerKey: hasKey,
-      keyPrefix: hasKey ? process.env.BURNER_WALLET_PRIVATE_KEY.substring(0, 8) + '...' : 'NOT SET',
+      keyPrefix: hasKey ? process.env.BURNER_WALLET_PRIVATE_KEY.substring(0, 10) + '...' : 'NOT SET',
+      keyLength: hasKey ? process.env.BURNER_WALLET_PRIVATE_KEY.length : 0,
       hasRpc: !!process.env.ETH_RPC,
       rpcUrl: process.env.ETH_RPC || 'NOT SET',
       hasTelegramBot: !!process.env.TELEGRAM_BOT_TOKEN,
       hasTelegramChat: !!process.env.TELEGRAM_CHAT_ID
     },
+    ethersWalletTest,
+    walletError,
     engine: {
       mode: tradingEngineRef?.useDemoMode ? 'demo' : 'live',
       running: tradingEngineRef?.isRunning || false,
