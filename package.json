@@ -1,0 +1,20 @@
+{
+  "name": "atlas-trading-backend",
+  "version": "1.0.0",
+  "description": "Atlas Trading Systems - Backend API & Trading Engine",
+  "main": "backend/src/index.js",
+  "scripts": {
+    "start": "node backend/src/index.js",
+    "build": "cd backend && npm install",
+    "postinstall": "cd backend && npm install"
+  },
+  "type": "module",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.9.0",
+    "sql.js": "^1.9.0",
+    "node-cron": "^3.0.3"
+  }
+}
