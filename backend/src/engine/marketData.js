@@ -114,13 +114,12 @@ export class MarketDataService {
   async deepResearch(pair, days = 400) {
     console.log(`[DeepResearch] ${pair} for ${days} days...`);
     
-    // Use real current price as base
-    const realPrice = await this.getCurrentPrice(pair) || this.getBasePrice(pair);
-    const basePrice = realPrice;
+    // Use fallback price instantly (no network call)
+    const basePrice = this.getFallbackPrice(pair) || this.getBasePrice(pair);
     const volatility = this.getPairVolatility(pair);
     
     let prices = [];
-    let currentPrice = realPrice;
+    let currentPrice = basePrice;
     let highPrice = currentPrice;
     let lowPrice = currentPrice;
     let totalVolume = 0;
