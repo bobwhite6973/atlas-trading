@@ -13,8 +13,29 @@ router.get('/status', (req, res) => {
     running: tradingEngineRef?.isRunning || false,
     mode: tradingEngineRef?.useDemoMode ? 'demo' : 'live',
     wallet: tradingEngineRef?.walletAddress || 'N/A',
+    hasRealWallet: tradingEngineRef?.wallet ? true : false,
     activePositions: tradingEngineRef?.activePositions?.size || 0,
     monitoredPairs: Array.from(tradingEngineRef?.monitoredPairs?.keys() || [])
+  });
+});
+
+router.get('/diagnostics', (req, res) => {
+  const hasKey = !!process.env.BURNER_WALLET_PRIVATE_KEY;
+  res.json({
+    env: {
+      hasBurnerKey: hasKey,
+      keyPrefix: hasKey ? process.env.BURNER_WALLET_PRIVATE_KEY.substring(0, 8) + '...' : 'NOT SET',
+      hasRpc: !!process.env.ETH_RPC,
+      rpcUrl: process.env.ETH_RPC || 'NOT SET',
+      hasTelegramBot: !!process.env.TELEGRAM_BOT_TOKEN,
+      hasTelegramChat: !!process.env.TELEGRAM_CHAT_ID
+    },
+    engine: {
+      mode: tradingEngineRef?.useDemoMode ? 'demo' : 'live',
+      running: tradingEngineRef?.isRunning || false,
+      hasWalletInstance: tradingEngineRef?.wallet ? true : false,
+      walletAddress: tradingEngineRef?.walletAddress || 'N/A'
+    }
   });
 });
 
