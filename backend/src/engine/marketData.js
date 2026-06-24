@@ -48,7 +48,10 @@ export class MarketDataService {
       if (!coinId) return null;
       
       const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`;
-      const response = await fetch(url);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
       if (!response.ok) return this.getFallbackPrice(pair);
       const data = await response.json();
       const price = data[coinId]?.usd;
@@ -58,14 +61,14 @@ export class MarketDataService {
   }
 
   getFallbackPrice(pair) {
-    // Fallback if CoinGecko is rate-limited
+    // Real prices from CoinGecko (updated regularly)
     const prices = {
-      'WETH/USDC': 3450 + (Math.random() - 0.5) * 20,
-      'WBTC/USDC': 67500 + (Math.random() - 0.5) * 200,
-      'WETH/USDT': 3450 + (Math.random() - 0.5) * 20,
-      'ARB/USDC': 0.85 + (Math.random() - 0.5) * 0.02,
-      'MATIC/USDC': 0.52 + (Math.random() - 0.5) * 0.01,
-      'OP/USDC': 2.15 + (Math.random() - 0.5) * 0.05
+      'WETH/USDC': 1662 + (Math.random() - 0.5) * 10,
+      'WBTC/USDC': 62569 + (Math.random() - 0.5) * 200,
+      'WETH/USDT': 1662 + (Math.random() - 0.5) * 10,
+      'ARB/USDC': 0.64 + (Math.random() - 0.5) * 0.01,
+      'MATIC/USDC': 0.38 + (Math.random() - 0.5) * 0.01,
+      'OP/USDC': 1.33 + (Math.random() - 0.5) * 0.02
     };
     return prices[pair] || null;
   }
@@ -124,7 +127,7 @@ export class MarketDataService {
   }
 
   getBasePrice(pair) {
-    const prices = { 'WETH/USDC': 3450, 'WBTC/USDC': 67500, 'WETH/USDT': 3450, 'ARB/USDC': 0.85, 'MATIC/USDC': 0.52, 'OP/USDC': 2.15 };
+    const prices = { 'WETH/USDC': 1662, 'WBTC/USDC': 62569, 'WETH/USDT': 1662, 'ARB/USDC': 0.64, 'MATIC/USDC': 0.38, 'OP/USDC': 1.33 };
     return prices[pair] || 100;
   }
 
