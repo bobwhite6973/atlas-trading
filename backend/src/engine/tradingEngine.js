@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { saveTrade } from '../database/setup.js';
 
 const TRADING_PAIRS = [
   'ETH/USDC', 'BTC/USDC', 'SOL/USDC',
@@ -71,10 +72,11 @@ export class TradingEngine {
       await this.tryRealConnection();
     }
     
+    // Research all pairs first, then start monitoring
     for (const pair of TRADING_PAIRS) {
-      this.researchPair(pair);
+      await this.researchPair(pair);
     }
-    
+    console.log('[TradingEngine] All pairs researched, starting monitor loop...');
     this.monitorLoop();
   }
 
@@ -196,6 +198,7 @@ export class TradingEngine {
       };
       
       this.activePositions.set(pair, position);
+      saveTrade(position);
       console.log(`[Trade] Position opened: ${position.id}`);
       console.log(`[Trade] TP: $${position.takeProfit.toFixed(2)} | SL: $${position.stopLoss.toFixed(2)}`);
     } catch (err) {
@@ -237,7 +240,8 @@ export class TradingEngine {
     position.closeReason = reason;
     position.closeTime = Date.now();
     
-    console.log(`[Trade] CLOSED ${pair} | ${reason} | PnL: $${pnl.toFixed(2)}`);
+    console.log(`[Trade] CLOSED ${pair} | ${reason} | PnL: ${pnl.toFixed(2)}`);
+    saveTrade(position);
     this.activePositions.delete(pair);
   }
 
