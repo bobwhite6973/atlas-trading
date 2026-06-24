@@ -47,18 +47,17 @@ export class TradingEngine {
         body: JSON.stringify({ jsonrpc:'2.0', method:'eth_blockNumber', params:[], id:1 })
       });
       const data = await res.json();
-      if (!data.result) { console.log('[TradingEngine] RPC not responding - staying demo'); return; }
+      if (!data.result) { console.log('[TradingEngine] RPC not responding'); return; }
       
-      // RPC works - go LIVE immediately
+      // RPC works - set up provider for wallet balance display
       this.provider = new ethers.JsonRpcProvider(rpcUrl);
-      this.useDemoMode = false;
-      console.log(`[TradingEngine] RPC OK - SWITCHED TO LIVE MODE`);
+      console.log(`[TradingEngine] RPC OK - connected`);
       
-      // Connect wallet if key exists
+      // Connect wallet if key exists (for balance display only - stays in demo mode)
       if (process.env.BURNER_WALLET_PRIVATE_KEY) {
         this.wallet = new ethers.Wallet(process.env.BURNER_WALLET_PRIVATE_KEY, this.provider);
         this.dexExecutor = new DEXExecutor(this.provider, this.wallet);
-        console.log(`[TradingEngine] Wallet ready: ${this.wallet.address}`);
+        console.log(`[TradingEngine] Wallet ready (demo mode): ${this.wallet.address}`);
       }
     } catch (err) {
       console.log('[TradingEngine] RPC failed:', err.message);
