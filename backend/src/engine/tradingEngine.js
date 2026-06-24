@@ -226,36 +226,32 @@ export class TradingEngine {
   }
 
   async getWalletBalance() {
+    const rpcUrl = process.env.ETH_RPC || 'https://ethereum-rpc.publicnode.com';
     try {
-      // Direct RPC call to get real ETH balance
-      const rpcUrl = process.env.ETH_RPC || 'https://ethereum-rpc.publicnode.com';
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_getBalance',
-          params: [this.walletAddress, 'latest'],
-          id: 1
-        }),
-        signal: controller.signal
+      // Check ETH balance
+      const ethRes = await fetch(rpcUrl, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc:'2.0', method:'eth_getBalance', params:[this.walletAddress,'latest'], id:1 })
       });
-      clearTimeout(timeout);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.result) {
-          const ethBalance = parseInt(data.result, 16) / 1e18;
-          const usdValue = ethBalance * 1662; // Approx ETH price
-          console.log(`[Wallet] ETH: ${ethBalance.toFixed(4)} (${usdValue.toFixed(2)})`);
-          return usdValue;
-        }
-      }
+      const ethData = await ethRes.json();
+      const ethBalance = ethData.result ? parseInt(ethData.result, 16) / 1e18 : 0;
+      const ethUsd = ethBalance * 1662;
+      
+      // Check USDC balance
+      const usdcRes = await fetch(rpcUrl, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc:'2.0', method:'eth_call', params:[{to:'0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', data:'0x70a08231000000000000000000000000'+this.walletAddress.slice(2)},'latest'], id:2 })
+      });
+      const usdcData = await usdcRes.json();
+      const usdcBalance = usdcData.result ? parseInt(usdcData.result, 16) / 1e6 : 0;
+      
+      const total = ethUsd + usdcBalance;
+      console.log(`[Wallet] ETH: ${ethBalance.toFixed(4)} (${ethUsd.toFixed(2)}) | USDC: ${usdcBalance.toFixed(2)} | Total: ${total.toFixed(2)}`);
+      return total;
     } catch (err) {
-      console.log('[Wallet] RPC check failed:', err.message);
+      console.log('[Wallet] Check failed:', err.message);
+      return 0;
     }
-    return 0; // No funds detected
   }
 
   async getMaxPositionSize() { return 500; }
