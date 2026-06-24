@@ -20,16 +20,16 @@ export class MarketDataService {
 
   async getCurrentPrice(pair) {
     try {
-      const cached = this.priceCache.get(pair);
+      let cached = this.priceCache.get(pair);
       if (cached && Date.now() - cached.time < 5000) return cached.price; // 5s cache
       const dexPrice = await this.getDexPrice(pair);
       if (dexPrice) {
         this.priceCache.set(pair, { price: dexPrice, time: Date.now() });
         return dexPrice;
       }
-      const cached = this.priceCache.get(pair);
+      cached = this.priceCache.get(pair);
       return cached ? cached.price : null;
-    } catch (err) {
+    } catch {
       const cached = this.priceCache.get(pair);
       return cached ? cached.price : null;
     }
