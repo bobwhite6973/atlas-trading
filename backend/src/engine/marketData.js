@@ -34,30 +34,71 @@ export class MarketDataService {
   }
 
   async getDexPrice(pair) {
-    // Free real-time price feed from CoinGecko (read-only, no auth needed)
+    // Query Uniswap V3 pools directly for real DEX prices
     try {
-      const coinMap = {
-        'WETH/USDC': 'ethereum',
-        'WBTC/USDC': 'bitcoin', 
-        'WETH/USDT': 'ethereum',
-        'ARB/USDC': 'arbitrum',
-        'MATIC/USDC': 'matic-network',
-        'OP/USDC': 'optimism'
+      // Pool configs: [pair, subgraphUrl, query]
+      const poolConfigs = {
+        'WETH/USDC': {
+          url: this.subgraphs.uniswapV3,
+          query: `{pool(id: "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8") { token0Price token1Price }}`,
+          parse: (d) => 1 / parseFloat(d.data.pool?.token0Price || 1)
+        },
+        'WBTC/USDC': {
+          url: this.subgraphs.uniswapV3,
+          query: `{pool(id: "0x99ac8ca7087fa4a2a1fb6357269965a2014abc35") { token0Price token1Price }}`,
+          parse: (d) => 1 / parseFloat(d.data.pool?.token0Price || 1)
+        },
+        'WETH/USDT': {
+          url: this.subgraphs.uniswapV3,
+          query: `{pool(id: "0x11b815efb8f581194ae79006d24e0d814b7697f6") { token0Price token1Price }}`,
+          parse: (d) => parseFloat(d.data.pool?.token0Price || 1662)
+        }
       };
-      const coinId = coinMap[pair];
-      if (!coinId) return null;
       
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-      if (!response.ok) return this.getFallbackPrice(pair);
-      const data = await response.json();
-      const price = data[coinId]?.usd;
-      if (price) return price;
+      // Alt-chain pairs use CoinGecko as source (no CEX)
+      const altCoinMap = {
+        'ARB/USDC': ['arbitrum', 0.64],
+        'MATIC/USDC': ['matic-network', 0.38],
+        'OP/USDC': ['optimism', 1.33]
+      };
+      
+      if (poolConfigs[pair]) {
+        const cfg = poolConfigs[pair];
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(cfg.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: cfg.query }),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.data?.pool) return cfg.parse(data);
+        }
+        // Fallback to CoinGecko for main pairs
+        return await this.coingeckoPrice(pair);
+      }
+      
+      if (altCoinMap[pair]) {
+        return await this.coingeckoPrice(pair);
+      }
     } catch {}
     return this.getFallbackPrice(pair);
+  }
+
+  async coingeckoPrice(pair) {
+    const map = { 'WETH/USDC': 'ethereum', 'WBTC/USDC': 'bitcoin', 'WETH/USDT': 'ethereum', 'ARB/USDC': 'arbitrum', 'MATIC/USDC': 'matic-network', 'OP/USDC': 'optimism' };
+    const id = map[pair];
+    if (!id) return null;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data[id]?.usd || null;
   }
 
   getFallbackPrice(pair) {
