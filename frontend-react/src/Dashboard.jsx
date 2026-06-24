@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const API_BASE = '/api';
+// Use Vite env variable for backend URL, fallback to relative path for local dev
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 const PAIRS = ['WETH/USDC', 'WBTC/USDC', 'WETH/USDT', 'ARB/USDC', 'MATIC/USDC', 'OP/USDC'];
 
 function Dashboard() {
