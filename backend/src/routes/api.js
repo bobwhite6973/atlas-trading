@@ -8,6 +8,9 @@ const marketData = new MarketDataService();
 let walletBal = { eth: 0, usdc: 0, total: 0 };
 export function updateWallet(b) { walletBal = b; }
 
+let engineRunning = false;
+export function setEngineRunning(v) { engineRunning = v; }
+
 // Dashboard summary
 router.get('/summary', async (req, res) => {
   try {
@@ -26,6 +29,7 @@ router.get('/summary', async (req, res) => {
     
     res.json({
       status: 'running',
+      engineRunning: engineRunning,
       uptime: process.uptime(),
       totalTrades: trades.length,
       activePositions: active.length,

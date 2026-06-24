@@ -1,4 +1,5 @@
 import express from 'express';
+import { setEngineRunning } from './api.js';
 const router = express.Router();
 
 let tradingEngineRef = null;
@@ -20,6 +21,7 @@ router.get('/status', (req, res) => {
 router.post('/start', (req, res) => {
   if (!tradingEngineRef) return res.status(500).json({ error: 'Engine not initialized' });
   tradingEngineRef.startMonitoring();
+  setEngineRunning(true);
   if (telegramRef) telegramRef.sendAlert('▶️ Trading engine STARTED');
   res.json({ status: 'started' });
 });
@@ -27,6 +29,7 @@ router.post('/start', (req, res) => {
 router.post('/stop', (req, res) => {
   if (!tradingEngineRef) return res.status(500).json({ error: 'Engine not initialized' });
   tradingEngineRef.stop();
+  setEngineRunning(false);
   if (telegramRef) telegramRef.sendAlert('⏸️ Trading engine STOPPED');
   res.json({ status: 'stopped' });
 });

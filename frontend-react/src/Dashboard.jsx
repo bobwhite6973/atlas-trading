@@ -86,10 +86,10 @@ function Dashboard() {
           <span style={{ fontSize: 12, color: '#e2e8f0' }}>💰 ${summary?.wallet?.total?.toFixed(2) || '0.00'}</span>
           <button onClick={toggleEngine} style={{
             padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
-            background: summary?.status === 'running' ? '#dc2626' : '#059669',
+            background: summary?.engineRunning ? '#dc2626' : '#059669',
             color: 'white', fontWeight: 600, fontSize: 12
           }}>
-            {summary?.status === 'running' ? '⏹ STOP' : '▶ START'}
+            {summary?.engineRunning ? '⏹ STOP' : '▶ START'}
           </button>
           <span style={{ fontSize: 12, color: '#64748b' }}>{new Date().toLocaleString()}</span>
         </div>
