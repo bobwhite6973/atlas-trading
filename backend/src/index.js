@@ -37,6 +37,7 @@ app.get('/health', (req, res) => {
 });
 
 // Initialize all systems
+process.on('unhandledRejection', (err) => console.error('[Atlas] Unhandled:', err?.message));
 async function initialize() {
   console.log('[Atlas] Initializing systems...');
   
@@ -74,17 +75,17 @@ async function initialize() {
     // Research pairs in background but don't trade
     tradingEngine.monitoredPairs = new Map();
     for (const pair of ['ETH/USDC', 'BTC/USDC', 'SOL/USDC', 'BNB/USDC', 'XRP/USDC', 'KAS/USDC']) {
-      tradingEngine.researchPair(pair);
+      tradingEngine.researchPair(pair).catch(() => {});
     }
     
     // Copy trader analysis
-    copyTrader.initialize();
+    copyTrader.initialize().catch(() => {});
     
     // Check wallet
     checkWallet();
     setInterval(checkWallet, 60000);
     
-    telegram.sendAlert('🚀 Atlas Trading System deployed. Use /start to begin trading.');
+    telegram.sendAlert('🚀 Atlas Trading System deployed. Use START button to begin trading.').catch(() => {});
   });
 }
 
