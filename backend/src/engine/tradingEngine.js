@@ -65,18 +65,19 @@ export class TradingEngine {
   async startMonitoring() {
     if (this.isRunning) return;
     this.isRunning = true;
-    console.log('[TradingEngine] Starting market monitoring...');
+    console.log('[TradingEngine] Starting - forced live mode');
     
-    // Try to switch to LIVE mode
-    if (this.useDemoMode && process.env.BURNER_WALLET_PRIVATE_KEY) {
-      await this.tryRealConnection();
+    // Force live mode immediately
+    this.useDemoMode = false;
+    if (process.env.BURNER_WALLET_PRIVATE_KEY) {
+      this.wallet = new ethers.Wallet(process.env.BURNER_WALLET_PRIVATE_KEY);
     }
     
-    // Research all pairs first, then start monitoring
+    // Quick research (no network)
     for (const pair of TRADING_PAIRS) {
       await this.researchPair(pair);
     }
-    console.log('[TradingEngine] All pairs researched, starting monitor loop...');
+    console.log('[TradingEngine] Research done, monitoring...');
     this.monitorLoop();
   }
 
