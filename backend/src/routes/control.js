@@ -14,6 +14,7 @@ router.get('/status', (req, res) => {
     mode: tradingEngineRef?.useDemoMode ? 'demo' : 'live',
     wallet: tradingEngineRef?.walletAddress || 'N/A',
     hasRealWallet: tradingEngineRef?.wallet ? true : false,
+    liveTrading: tradingEngineRef?.liveTradingEnabled || false,
     activePositions: tradingEngineRef?.activePositions?.size || 0,
     monitoredPairs: Array.from(tradingEngineRef?.monitoredPairs?.keys() || [])
   });
@@ -73,6 +74,27 @@ router.post('/stop', (req, res) => {
   setEngineRunning(false);
   if (telegramRef) telegramRef.sendAlert('⏸️ Trading engine STOPPED');
   res.json({ status: 'stopped' });
+});
+
+router.post('/go-live', async (req, res) => {
+  if (!tradingEngineRef) return res.status(500).json({ error: 'Engine not initialized' });
+  if (!tradingEngineRef.wallet) return res.status(400).json({ error: 'No wallet connected' });
+  if (!tradingEngineRef.dexExecutor) return res.status(400).json({ error: 'No DEX executor available' });
+  
+  tradingEngineRef.useDemoMode = false;
+  tradingEngineRef.liveTradingEnabled = true;
+  console.log('[Control] 🔴 SWITCHED TO LIVE TRADING - real swaps enabled');
+  if (telegramRef) telegramRef.sendAlert('🔴 LIVE TRADING ENABLED - real on-chain swaps will execute');
+  res.json({ status: 'live', message: 'Live trading enabled. Real on-chain swaps will execute.' });
+});
+
+router.post('/go-demo', (req, res) => {
+  if (!tradingEngineRef) return res.status(500).json({ error: 'Engine not initialized' });
+  tradingEngineRef.useDemoMode = true;
+  tradingEngineRef.liveTradingEnabled = false;
+  console.log('[Control] 🟢 SWITCHED TO DEMO MODE');
+  if (telegramRef) telegramRef.sendAlert('🟢 DEMO MODE - no real swaps');
+  res.json({ status: 'demo', message: 'Demo mode enabled. No real swaps.' });
 });
 
 export default router;

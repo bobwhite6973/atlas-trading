@@ -204,7 +204,7 @@ export class TradingEngine {
     const positionSize = Math.min(balance * this.config.maxPositionSize, await this.getMaxPositionSize());
     if (positionSize < 0.01) return;
     
-    if (this.useDemoMode || !this.wallet || !this.dexExecutor) {
+    if (!this.liveTradingEnabled || this.useDemoMode || !this.wallet || !this.dexExecutor) {
       console.log(`[Demo] ${direction.toUpperCase()} ${pair} @ ${price.toFixed(2)} | Conf: ${confidence.toFixed(2)}`);
       this.simulateTrade(params);
       return;
@@ -269,7 +269,7 @@ export class TradingEngine {
     if (!position) return;
     
     // Reverse the swap on-chain if this was a live trade
-    if (!this.useDemoMode && this.dexExecutor && position.txHash) {
+    if (this.liveTradingEnabled && !this.useDemoMode && this.dexExecutor && position.txHash) {
       try {
         const reverseDirection = position.direction === 'long' ? 'short' : 'long';
         console.log(`[Trade] CLOSING ${pair} - reversing swap on-chain...`);
