@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { saveTrade } from '../database/setup.js';
+import { DEXExecutor } from './dexExecutor.js';
 
 const TRADING_PAIRS = [
   'ETH/USDC', 'BTC/USDC', 'SOL/USDC',
@@ -11,6 +12,7 @@ export class TradingEngine {
     this.marketData = marketData;
     this.provider = null;
     this.wallet = null;
+    this.dexExecutor = null;
     this.walletAddress = '0xb1567f3cD10b476A7673f2F87c8ECA832fCCC6a5';
     this.activePositions = new Map();
     this.monitoredPairs = new Map();
@@ -55,6 +57,7 @@ export class TradingEngine {
       // Connect wallet if key exists
       if (process.env.BURNER_WALLET_PRIVATE_KEY) {
         this.wallet = new ethers.Wallet(process.env.BURNER_WALLET_PRIVATE_KEY, this.provider);
+        this.dexExecutor = new DEXExecutor(this.provider, this.wallet);
         console.log(`[TradingEngine] Wallet ready: ${this.wallet.address}`);
       }
     } catch (err) {
@@ -200,17 +203,28 @@ export class TradingEngine {
   async executeTrade(params) {
     const { pair, direction, price, confidence, balance, strategy } = params;
     
-    if (this.useDemoMode || !this.wallet) {
-      console.log(`[Demo] ${direction.toUpperCase()} ${pair} @ $${price.toFixed(2)} | Conf: ${confidence.toFixed(2)}`);
+    const positionSize = Math.min(balance * this.config.maxPositionSize, await this.getMaxPositionSize());
+    if (positionSize < 0.01) return;
+    
+    if (this.useDemoMode || !this.wallet || !this.dexExecutor) {
+      console.log(`[Demo] ${direction.toUpperCase()} ${pair} @ ${price.toFixed(2)} | Conf: ${confidence.toFixed(2)}`);
       this.simulateTrade(params);
       return;
     }
     
     try {
-      const positionSize = Math.min(balance * this.config.maxPositionSize, await this.getMaxPositionSize());
-      if (positionSize < 0.01) return;
+      console.log(`[Trade] EXECUTING ${direction.toUpperCase()} ${pair} Size: ${positionSize.toFixed(2)} LIVE ON-CHAIN`);
       
-      console.log(`[Trade] EXECUTING ${direction.toUpperCase()} ${pair} Size: $${positionSize.toFixed(2)}`);
+      // Execute real swap on Uniswap
+      const amountWithLeverage = positionSize * this.config.leverageMultiplier;
+      const result = await this.dexExecutor.swapExactInput(pair, direction, amountWithLeverage);
+      
+      if (!result.success) {
+        console.error(`[Trade] On-chain swap failed: ${result.error}`);
+        return;
+      }
+      
+      console.log(`[Trade] On-chain swap executed: ${result.hash}`);
       
       const position = {
         id: `${pair}-${Date.now()}`,
@@ -220,13 +234,13 @@ export class TradingEngine {
         entryTime: Date.now(), strategy, confidence,
         takeProfit: direction === 'long' ? price * 1.015 : price * 0.985,
         stopLoss: direction === 'long' ? price * 0.995 : price * 1.005,
-        status: 'open'
+        status: 'open',
+        txHash: result.hash
       };
       
       this.activePositions.set(pair, position);
       saveTrade(position);
-      console.log(`[Trade] Position opened: ${position.id}`);
-      console.log(`[Trade] TP: $${position.takeProfit.toFixed(2)} | SL: $${position.stopLoss.toFixed(2)}`);
+      console.log(`[Trade] Position opened: ${position.id} | Tx: ${result.hash}`);
     } catch (err) {
       console.error('[Trade] Execution error:', err.message);
     }
@@ -255,6 +269,21 @@ export class TradingEngine {
   async closePosition(pair, exitPrice, reason) {
     const position = this.activePositions.get(pair);
     if (!position) return;
+    
+    // Reverse the swap on-chain if this was a live trade
+    if (!this.useDemoMode && this.dexExecutor && position.txHash) {
+      try {
+        const reverseDirection = position.direction === 'long' ? 'short' : 'long';
+        console.log(`[Trade] CLOSING ${pair} - reversing swap on-chain...`);
+        const result = await this.dexExecutor.swapExactInput(pair, reverseDirection, position.effectiveSize);
+        if (result.success) {
+          console.log(`[Trade] Reverse swap executed: ${result.hash}`);
+          position.closeTxHash = result.hash;
+        }
+      } catch (err) {
+        console.error(`[Trade] Reverse swap failed: ${err.message}`);
+      }
+    }
     
     const pnl = position.direction === 'long'
       ? ((exitPrice - position.entryPrice) / position.entryPrice) * position.effectiveSize

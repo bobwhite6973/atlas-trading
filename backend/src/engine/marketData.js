@@ -36,9 +36,12 @@ export class MarketDataService {
   }
 
   async getDexPrice(pair) {
-    // Query Uniswap V3 pools directly for real DEX prices
+    // Try CoinGecko first (most reliable for current prices)
+    const cgPrice = await this.coingeckoPrice(pair);
+    if (cgPrice) return cgPrice;
+    
+    // Fallback: query Uniswap V3 pools directly for real DEX prices
     try {
-      // Pool configs: [pair, subgraphUrl, query]
       const poolConfigs = {
         'ETH/USDC': {
           url: this.subgraphs.uniswapV3,
@@ -50,14 +53,6 @@ export class MarketDataService {
           query: `{pool(id: "0x99ac8ca7087fa4a2a1fb6357269965a2014abc35") { token0Price token1Price }}`,
           parse: (d) => 1 / parseFloat(d.data.pool?.token0Price || 1)
         }
-      };
-      
-      // Alt-chain pairs use CoinGecko (read-only, no CEX API)
-      const altCoinMap = {
-        'SOL/USDC': ['solana', 145],
-        'BNB/USDC': ['binancecoin', 580],
-        'XRP/USDC': ['ripple', 0.50],
-        'KAS/USDC': ['kaspa', 0.14]
       };
       
       if (poolConfigs[pair]) {
@@ -75,14 +70,9 @@ export class MarketDataService {
           const data = await res.json();
           if (data?.data?.pool) return cfg.parse(data);
         }
-        // Fallback to CoinGecko for main pairs
-        return await this.coingeckoPrice(pair);
-      }
-      
-      if (altCoinMap[pair]) {
-        return await this.coingeckoPrice(pair);
       }
     } catch {}
+    
     return this.getFallbackPrice(pair);
   }
 
@@ -101,12 +91,12 @@ export class MarketDataService {
 
   getFallbackPrice(pair) {
     const prices = {
-      'ETH/USDC': 1662 + (Math.random() - 0.5) * 10,
-      'BTC/USDC': 62569 + (Math.random() - 0.5) * 200,
-      'SOL/USDC': 145 + (Math.random() - 0.5) * 2,
-      'BNB/USDC': 580 + (Math.random() - 0.5) * 5,
-      'XRP/USDC': 0.50 + (Math.random() - 0.5) * 0.01,
-      'KAS/USDC': 0.14 + (Math.random() - 0.5) * 0.005
+      'ETH/USDC': 1650 + (Math.random() - 0.5) * 20,
+      'BTC/USDC': 59400 + (Math.random() - 0.5) * 400,
+      'SOL/USDC': 68 + (Math.random() - 0.5) * 3,
+      'BNB/USDC': 562 + (Math.random() - 0.5) * 10,
+      'XRP/USDC': 0.48 + (Math.random() - 0.5) * 0.03,
+      'KAS/USDC': 0.029 + (Math.random() - 0.5) * 0.002
     };
     return prices[pair] || null;
   }
@@ -164,7 +154,7 @@ export class MarketDataService {
   }
 
   getBasePrice(pair) {
-    const prices = { 'ETH/USDC': 1662, 'BTC/USDC': 62569, 'SOL/USDC': 145, 'BNB/USDC': 580, 'XRP/USDC': 0.50, 'KAS/USDC': 0.14 };
+    const prices = { 'ETH/USDC': 1650, 'BTC/USDC': 59400, 'SOL/USDC': 68, 'BNB/USDC': 562, 'XRP/USDC': 0.48, 'KAS/USDC': 0.029 };
     return prices[pair] || 100;
   }
 
