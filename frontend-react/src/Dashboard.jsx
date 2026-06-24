@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-// Use Vite env variable for backend URL, fallback to relative path for local dev
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+// Backend API URL - change this to your Railway URL
+const API_BASE = import.meta.env.VITE_API_URL || 'https://atlas-trading-production-9fd5.up.railway.app/api';
 const PAIRS = ['WETH/USDC', 'WBTC/USDC', 'WETH/USDT', 'ARB/USDC', 'MATIC/USDC', 'OP/USDC'];
 
 function Dashboard() {
