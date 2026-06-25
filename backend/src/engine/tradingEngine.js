@@ -204,7 +204,10 @@ export class TradingEngine {
     const positionSize = Math.min(balance * this.config.maxPositionSize, await this.getMaxPositionSize());
     if (positionSize < 0.01) return;
     
-    if (!this.liveTradingEnabled || this.useDemoMode || !this.wallet || !this.dexExecutor) {
+    if (!this.liveTradingEnabled || this.useDemoMode || !this.wallet || !this.dexExecutor || !this.dexExecutor.canTradeLive(pair)) {
+      if (this.dexExecutor && !this.dexExecutor.canTradeLive(pair) && this.liveTradingEnabled) {
+        console.log(`[Trade] ${pair} not supported for live trading - falling back to demo`);
+      }
       console.log(`[Demo] ${direction.toUpperCase()} ${pair} @ ${price.toFixed(2)} | Conf: ${confidence.toFixed(2)}`);
       this.simulateTrade(params);
       return;

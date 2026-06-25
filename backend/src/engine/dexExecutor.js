@@ -7,8 +7,17 @@ const ADDRESSES = {
   AAVE_POOL: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
   WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
   USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-  USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+  WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
 };
+
+// Token mapping for trading pairs - which token to swap against USDC
+const TOKEN_MAP = {
+  'ETH': ADDRESSES.WETH,
+  'BTC': ADDRESSES.WBTC,
+};
+
+// Only these pairs have real on-chain swap support
+const SUPPORTED_LIVE_PAIRS = ['ETH/USDC', 'BTC/USDC'];
 
 // Uniswap V3 Router ABI (exactInputSingle)
 const ROUTER_ABI = [
@@ -48,16 +57,11 @@ export class DEXExecutor {
 
   getTokenAddress(pair) {
     const [base] = pair.split('/');
-    const map = {
-      'ETH': ADDRESSES.WETH,
-      'BTC': ADDRESSES.WETH, // WBTC not implemented yet - use WETH as placeholder
-      'SOL': ADDRESSES.USDC, // Alt tokens would go through CoinGecko price
-      'BNB': ADDRESSES.USDC,
-      'XRP': ADDRESSES.USDC,
-      'KAS': ADDRESSES.USDC,
-      'USDC': ADDRESSES.USDC,
-    };
-    return map[base] || ADDRESSES.USDC;
+    return TOKEN_MAP[base] || null;
+  }
+
+  canTradeLive(pair) {
+    return SUPPORTED_LIVE_PAIRS.includes(pair);
   }
 
   async getTokenContract(tokenAddress) {
@@ -77,9 +81,16 @@ export class DEXExecutor {
 
   async swapExactInput(pair, direction, amountUSDC, minOutputUSDC = 0) {
     try {
-      const isBuy = direction === 'long'; // Buy = swap USDC -> WETH
-      const tokenIn = isBuy ? ADDRESSES.USDC : ADDRESSES.WETH;
-      const tokenOut = isBuy ? ADDRESSES.WETH : ADDRESSES.USDC;
+      if (!this.canTradeLive(pair)) {
+        return { success: false, error: `Live trading not supported for ${pair}. Only ETH/USDC and BTC/USDC supported.` };
+      }
+      
+      const isBuy = direction === 'long';
+      const baseToken = this.getTokenAddress(pair);
+      if (!baseToken) return { success: false, error: `Unknown token for ${pair}` };
+      
+      const tokenIn = isBuy ? ADDRESSES.USDC : baseToken;
+      const tokenOut = isBuy ? baseToken : ADDRESSES.USDC;
       const fee = FEE_TIERS[pair] || 3000;
       
       // Approve router if swapping USDC
